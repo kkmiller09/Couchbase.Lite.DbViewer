@@ -45,7 +45,8 @@
                             Style="{DynamicResource HeaderButton}"
                             Text="Hub Reload"
                             VerticalOptions="Center"
-                            WidthRequest="120" />
+                            WidthRequest="120"
+                            IsVisible="{Binding IsEditing}" />
                         <Label
                             Grid.Column="1"
                             Margin="0"
@@ -53,7 +54,16 @@
                             HorizontalOptions="CenterAndExpand"
                             Style="{DynamicResource PageHeaderLabel}"
                             Text="{Binding DocumentId}"
-                            VerticalOptions="Start" />
+                            VerticalOptions="Start" 
+                            IsVisible="{Binding IsEditing}"/>
+                        <Entry Grid.Column="0"
+                               Grid.ColumnSpan="2"
+                               Margin="10,0"
+                               HorizontalOptions="FillAndExpand"
+                               Placeholder="Enter Document Id"
+                               Style="{StaticResource HeaderEntry}"
+                               Text="{Binding DocumentId}" 
+                               IsVisible="{Binding IsIdEditable}"/>
                         <Button
                             Grid.Column="2"
                             Command="{Binding SaveCommand}"
@@ -66,13 +76,8 @@
                     </Grid>
                 </StackLayout>
             </Frame>
-            <ScrollView
-                Grid.Row="1"
-                Margin="0"
-                Padding="0"
-                BackgroundColor="White"
-                VerticalOptions="FillAndExpand">
                 <Editor
+                    Grid.Row="1"
                     Margin="0"
                     AutoSize="TextChanges"
                     BackgroundColor="White"
@@ -80,7 +85,6 @@
                     Text="{Binding DocumentText}"
                     TextColor="Black"
                     VerticalOptions="FillAndExpand" />
-            </ScrollView>
             <Button
                 Grid.Row="2"
                 Margin="5"

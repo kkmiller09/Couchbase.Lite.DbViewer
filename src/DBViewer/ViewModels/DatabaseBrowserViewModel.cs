@@ -104,6 +104,8 @@ namespace DbViewer.ViewModels
                 ExecuteDatabaseRefreshAsync,
                 outputScheduler: RxApp.MainThreadScheduler);
 
+            AddCommand = ReactiveCommand.CreateFromTask(ExecuteAddDocument);
+
             ViewSelectedDocumentCommand =
                 ReactiveCommand.CreateFromTask<DocumentModel>(ExecuteViewSelectedDocumentAsync);
 
@@ -120,6 +122,7 @@ namespace DbViewer.ViewModels
         public ReactiveCommand<DocumentModel, Unit> DeleteDocumentCommand { get; }
 
         public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
+        public ReactiveCommand<Unit, Unit> AddCommand { get; }
 
         public string FilterText
         {
@@ -164,6 +167,13 @@ namespace DbViewer.ViewModels
             {
                 CurrentDatabaseItemViewModel = parameters.GetValue<CachedDatabaseItemViewModel>(
                     nameof(CachedDatabaseItemViewModel));
+            }
+            
+            if (parameters.ContainsKey("Refresh"))
+            {
+                RefreshCommand.Execute()
+                    .Subscribe()
+                    .DisposeWith(Disposables);
             }
         }
 
@@ -283,6 +293,15 @@ namespace DbViewer.ViewModels
             return NavigationService.NavigateAsync(
                 nameof(DocumentViewerPage),
                 (nameof(DocumentModel), document),
+                (nameof(CachedDatabase), CurrentDatabaseItemViewModel.Database));
+        }
+
+        private Task ExecuteAddDocument(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return NavigationService.NavigateAsync(
+                nameof(DocumentViewerPage),
                 (nameof(CachedDatabase), CurrentDatabaseItemViewModel.Database));
         }
         private async Task ExecuteDeleteDocumentAsync(DocumentModel document, CancellationToken cancellationToken)

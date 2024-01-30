@@ -28,7 +28,8 @@ namespace DbViewer.ViewModels
         private IDatabaseConnection _databaseConnection;
         private Document _couchbaseDocument;
 
-        public DocumentViewerViewModel(INavigationService navigationService, IDialogService dialogService, IHubService hubService)
+        public DocumentViewerViewModel(INavigationService navigationService, IDialogService dialogService,
+            IHubService hubService)
             : base(navigationService)
         {
             _dialogService = Guard.Argument(dialogService, nameof(dialogService))
@@ -45,6 +46,8 @@ namespace DbViewer.ViewModels
         }
 
         public DocumentModel DocumentModel { get; private set; }
+        public CachedDatabase CachedDatabase { get; private set; }
+
 
         public ReactiveCommand<Unit, Unit> ShareCommand { get; }
         public ReactiveCommand<Unit, Unit> SaveCommand { get; }
@@ -53,7 +56,7 @@ namespace DbViewer.ViewModels
         public string DocumentId
         {
             get => _documentId;
-            set => this.RaiseAndSetIfChanged(ref _documentId, value, nameof(DocumentId));
+            set => this.RaiseAndSetIfChanged(ref _documentId, value);
         }
 
         private string _documentText;
@@ -62,6 +65,24 @@ namespace DbViewer.ViewModels
             get => _documentText;
             set => this.RaiseAndSetIfChanged(ref _documentText, value);
         }
+
+        private bool _isEditing;
+
+        public bool IsEditing
+        {
+            get => _isEditing;
+            private set => this.RaiseAndSetIfChanged(ref _isEditing, value);
+        }
+
+        private bool _isIdEditable;
+
+        public bool IsIdEditable
+        {
+            get => _isIdEditable;
+            private set => this.RaiseAndSetIfChanged(ref _isIdEditable, value);
+        }
+
+        private DatabaseInfo _remoteDatabaseInfo;
 
         public void OnNavigatedFrom(INavigationParameters parameters)
         {
@@ -75,7 +96,20 @@ namespace DbViewer.ViewModels
                 DocumentModel = parameters.GetValue<DocumentModel>(nameof(Models.DocumentModel));
             }
 
-            Reload();
+            if (parameters.ContainsKey(nameof(CachedDatabase)))
+            {
+                CachedDatabase = parameters.GetValue<CachedDatabase>(nameof(CachedDatabase));
+            }
+
+            _remoteDatabaseInfo = CachedDatabase.RemoteDatabaseInfo;
+
+            IsEditing = DocumentModel != null;
+            IsIdEditable = !IsEditing;
+
+            if (IsEditing)
+            {
+                Reload();
+            }
         }
 
         private void Reload()
@@ -132,11 +166,28 @@ namespace DbViewer.ViewModels
                 return;
             }
 
-            var documentInfo = new DocumentInfo(DocumentModel.Database.RemoteDatabaseInfo, _couchbaseDocument.Id, _couchbaseDocument.RevisionID, DocumentText);
+            if (string.IsNullOrEmpty(DocumentId))
+            {
+                var dialogParameters = new DialogParameters
+                {
+                    { DialogNames.MainMessageParam, "Enter Document Id to add new document." }
+                };
 
+                await _dialogService.ShowDialogAsync(DialogNames.General, dialogParameters);
+
+                return;
+            }
+
+
+            var documentInfo = IsEditing
+                ? new DocumentInfo(_remoteDatabaseInfo, _couchbaseDocument.Id,
+                    _couchbaseDocument.RevisionID, DocumentText)
+                : new DocumentInfo(_remoteDatabaseInfo, DocumentId, DocumentId, DocumentText, true);
+
+            DocumentInfo updatedDocument = documentInfo;
             try
             {
-                var updatedDocument = await _hubService.SaveDocument(documentInfo, cancellationToken);
+                updatedDocument = await _hubService.SaveDocument(documentInfo, cancellationToken);
 
                 if (updatedDocument == null)
                 {
@@ -155,10 +206,15 @@ namespace DbViewer.ViewModels
             }
             catch (Exception ex)
             {
-
             }
 
-            UpdateFromDocumentInfo(documentInfo);
+            if (IsEditing)
+            {
+                UpdateFromDocumentInfo(documentInfo);
+                return;
+            }
+
+            await NavigationService.GoBackAsync(("Refresh", true)).ConfigureAwait(false);
         }
 
         private async Task ExecuteReloadAsync(CancellationToken cancellationToken)

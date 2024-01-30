@@ -38,6 +38,13 @@
 
                         <StackLayout Orientation="Horizontal"
                                      HorizontalOptions="End">
+                            <Button Command="{Binding AddCommand}"
+                                    HeightRequest="40"
+                                    HorizontalOptions="Start"
+                                    Style="{DynamicResource HeaderButton}"
+                                    Text="Add"
+                                    VerticalOptions="Center"
+                                    WidthRequest="120" />
                             <Button Command="{Binding RefreshCommand}"
                                     HeightRequest="40"
                                     HorizontalOptions="Start"

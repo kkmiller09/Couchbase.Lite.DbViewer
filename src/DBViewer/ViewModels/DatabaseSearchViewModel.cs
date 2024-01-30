@@ -185,14 +185,14 @@ namespace DbViewer.ViewModels
 
         private void ExecuteViewSelectedDocument(DocumentModel document)
         {
-            var navParams = new NavigationParameters
-            {
-                { nameof(DocumentModel), document }
-            };
-
             RunOnUi(() =>
             {
-                NavigationService.NavigateAsync(nameof(DocumentViewerPage), navParams);
+                NavigationService.NavigateAsync(
+                    nameof(DocumentViewerPage),
+                    (nameof(DocumentModel), document),
+                    (nameof(CachedDatabase), CurrentDatabaseItemViewModel.Database));
+
+
             });
         }
     }

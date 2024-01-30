@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Couchbase.Lite;
 
 namespace DbViewer.Hub.Services
 {
@@ -24,19 +25,20 @@ namespace DbViewer.Hub.Services
 
         private HubInfo _hubInfo;
 
-        public HubService(ILogger<HubService> logger, IDatabaseProviderRepository databaseProviderRepository, IDatabaseConnection databaseConnection)
+        public HubService(ILogger<HubService> logger, IDatabaseProviderRepository databaseProviderRepository,
+            IDatabaseConnection databaseConnection)
         {
             _logger = Guard.Argument(logger, nameof(logger))
-                           .NotNull()
-                           .Value;
+                .NotNull()
+                .Value;
 
             _databaseConnection = Guard.Argument(databaseConnection, nameof(databaseConnection))
-                                       .NotNull()
-                                       .Value;
+                .NotNull()
+                .Value;
 
             _databaseProviderRepository = Guard.Argument(databaseProviderRepository, nameof(databaseProviderRepository))
-                                               .NotNull()
-                                               .Value;
+                .NotNull()
+                .Value;
         }
 
         public HubInfo GetLatestHub()
@@ -88,10 +90,12 @@ namespace DbViewer.Hub.Services
 
         public DocumentInfo SaveDocumentToDatabase(DocumentInfo documentInfo)
         {
-            var dbProvider = _databaseProviderRepository.GetOrCreate(documentInfo.DatabaseInfo?.ProviderInfo, GetLatestHub());
+            var dbProvider =
+                _databaseProviderRepository.GetOrCreate(documentInfo.DatabaseInfo?.ProviderInfo, GetLatestHub());
             var rootDatabasePath = dbProvider.GetCurrentDatabaseRootPath(documentInfo.DatabaseInfo);
 
-            var isConnected = _databaseConnection.Connect(rootDatabasePath, documentInfo.DatabaseInfo.DisplayDatabaseName);
+            var isConnected =
+                _databaseConnection.Connect(rootDatabasePath, documentInfo.DatabaseInfo.DisplayDatabaseName);
 
             // TODO: <James Thomas: 6/27/21> Switch to full response object instead of null
             if (!isConnected)
@@ -99,12 +103,20 @@ namespace DbViewer.Hub.Services
                 return null;
             }
 
-            var document = _databaseConnection.GetDocumentById(documentInfo.DocumentId);
+            MutableDocument mutableDoc;
+            if (documentInfo.IsNewDocument)
+            {
+                mutableDoc = new MutableDocument(documentInfo.DocumentId, documentInfo.DataAsJson);
+            }
+            else
+            {
+                var document = _databaseConnection.GetDocumentById(documentInfo.DocumentId);
+                var dictionary = CbUtils.ParseTo<Dictionary<string, object>>(documentInfo.DataAsJson);
 
-            var dictionary = CbUtils.ParseTo<Dictionary<string, object>>(documentInfo.DataAsJson);
+                mutableDoc = document.ToMutable();
+                mutableDoc.SetData(dictionary);
+            }
 
-            var mutableDoc = document.ToMutable();
-            mutableDoc.SetData(dictionary);
 
             _databaseConnection.SaveDocument(mutableDoc);
 
@@ -181,14 +193,17 @@ namespace DbViewer.Hub.Services
         private HubInfo CreateNew()
         {
             var serviceTypes = ServiceScanner.GetServicesForAssembly(GetType().Assembly);
-            var staticDirectoryScanner = serviceTypes.FirstOrDefault(st => st.FullyQualifiedAssemblyTypeName == typeof(StaticDirectoryDbProvider).AssemblyQualifiedName);
+            var staticDirectoryScanner = serviceTypes.FirstOrDefault(st =>
+                st.FullyQualifiedAssemblyTypeName == typeof(StaticDirectoryDbProvider).AssemblyQualifiedName);
 
             var hubInfo = new HubInfo
             {
                 HubName = $"{Environment.MachineName} - Hub",
                 Id = Guid.NewGuid().ToString(),
                 ServiceDefinitions = serviceTypes,
-                ActiveServices = staticDirectoryScanner == null ? new List<ServiceInfo>() : new List<ServiceInfo>() { CreateServiceFromDefinition(staticDirectoryScanner) }
+                ActiveServices = staticDirectoryScanner == null
+                    ? new List<ServiceInfo>()
+                    : new List<ServiceInfo>() { CreateServiceFromDefinition(staticDirectoryScanner) }
             };
 
             return hubInfo;
@@ -210,7 +225,5 @@ namespace DbViewer.Hub.Services
 
             return serviceInfo;
         }
-
-
     }
 }

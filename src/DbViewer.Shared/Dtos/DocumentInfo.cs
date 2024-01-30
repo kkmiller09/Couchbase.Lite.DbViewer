@@ -4,7 +4,7 @@ namespace DbViewer.Shared.Dtos
 {
     public class DocumentInfo
     {
-        public DocumentInfo(DatabaseInfo databaseInfo, string documentId, string revisionId, string dataAsJson)
+        public DocumentInfo(DatabaseInfo databaseInfo, string documentId, string revisionId, string dataAsJson, bool isNewDocument = false)
         {
             DatabaseInfo = Guard.Argument(databaseInfo, nameof(databaseInfo))
                   .NotNull()
@@ -21,6 +21,8 @@ namespace DbViewer.Shared.Dtos
             DataAsJson = Guard.Argument(dataAsJson, nameof(dataAsJson))
                   .NotNull()
                   .Value;
+
+            IsNewDocument = isNewDocument;
         }
 
         public DatabaseInfo DatabaseInfo { get; set; }
@@ -30,5 +32,7 @@ namespace DbViewer.Shared.Dtos
         public string RevisionId { get; set; }
 
         public string DataAsJson { get; set; }
+        
+        public bool IsNewDocument { get; set; }
     }
 }
